@@ -6,7 +6,7 @@ import { currentVersion, nextVersion, progressOf, type Action } from '../store'
 import type { Draft, MethodId, Report, State, WorkspaceConfig } from '../types'
 import { KnowledgeBase } from './Knowledge'
 
-export type AdminTab = 'clients' | 'signals' | 'drafts' | 'library' | 'knowledge' | 'settings'
+export type AdminTab = 'setup' | 'signals' | 'drafts' | 'library' | 'knowledge' | 'settings'
 
 export function Admin({
   s,
@@ -74,13 +74,14 @@ export function Admin({
   }
 
   const tabs: { id: AdminTab; label: string; count?: number }[] = [
-    { id: 'clients', label: 'Clients', count: workspaces.length },
+    { id: 'setup', label: 'Setup' },
     { id: 'signals', label: 'Signals', count: signals.length + managerQueue.length },
     { id: 'drafts', label: 'Drafts', count: open.length },
     { id: 'library', label: 'Method library' },
     { id: 'knowledge', label: 'Knowledge' },
     { id: 'settings', label: 'Claude settings' },
   ]
+  const activeTab = tabs.some((item) => item.id === tab) ? tab : 'setup'
 
   return (
     <div className="page">
@@ -89,25 +90,37 @@ export function Admin({
           <h1>
             Maintain the <em>methods</em>
           </h1>
-          <p className="lead">{s.workspace.name}. Signals in. Short lessons out.</p>
+          <p className="lead">Signals in. Short lessons out.</p>
         </div>
-        <span className={`badge ${ai.apiKey ? 'ok' : ''}`}>
-          <span className="dot" />
-          {ai.apiKey ? `Claude connected · ${ai.model}` : 'Claude not connected · using prepared drafts'}
-        </span>
+        <div className="admin-head-aside">
+          <label className="client-switch">
+            <span className="k">Client</span>
+            <select value={s.workspace.id} aria-label="Client" onChange={(e) => onSelectWorkspace(e.target.value)}>
+              {workspaces.map((workspace) => (
+                <option key={workspace.id} value={workspace.id}>
+                  {workspace.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className={`badge ${ai.apiKey ? 'ok' : ''}`}>
+            <span className="dot" />
+            {ai.apiKey ? `Claude connected · ${ai.model}` : 'Claude not connected · using prepared drafts'}
+          </span>
+        </div>
       </div>
       <div className="tabs">
         {tabs.map((t) => (
-          <button key={t.id} className={tab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
+          <button key={t.id} className={activeTab === t.id ? 'on' : ''} onClick={() => setTab(t.id)}>
             {t.label}
             {!!t.count && <span className="count">{t.count}</span>}
           </button>
         ))}
       </div>
 
-      {tab === 'clients' && <Clients key={s.workspace.id} s={s} dispatch={dispatch} workspaces={workspaces} onSelectWorkspace={onSelectWorkspace} />}
+      {activeTab === 'setup' && <Setup key={s.workspace.id} s={s} dispatch={dispatch} />}
 
-      {tab === 'signals' && (
+      {activeTab === 'signals' && (
         <div className="stack" style={{ gap: 16 }}>
           {managerQueue.map((id) => (
             <div className="card row between" key={id}>
@@ -156,8 +169,9 @@ export function Admin({
         </div>
       )}
 
-      {tab === 'drafts' && (
+      {activeTab === 'drafts' && (
         <Drafts
+          key={s.workspace.id}
           s={s}
           dispatch={dispatch}
           openId={openDraft}
@@ -171,11 +185,11 @@ export function Admin({
         />
       )}
 
-      {tab === 'library' && <Library s={s} dispatch={dispatch} />}
+      {activeTab === 'library' && <Library key={s.workspace.id} s={s} dispatch={dispatch} />}
 
-      {tab === 'knowledge' && <KnowledgeBase s={s} dispatch={dispatch} mode="admin" query={query} />}
+      {activeTab === 'knowledge' && <KnowledgeBase key={s.workspace.id} s={s} dispatch={dispatch} mode="admin" query={query} />}
 
-      {tab === 'settings' && <Settings ai={ai} setAi={setAi} />}
+      {activeTab === 'settings' && <Settings ai={ai} setAi={setAi} />}
     </div>
   )
 }
@@ -219,17 +233,7 @@ function ToolChange({ s, busy, onDraft }: { s: State; busy: boolean; onDraft: (m
   )
 }
 
-function Clients({
-  s,
-  dispatch,
-  workspaces,
-  onSelectWorkspace,
-}: {
-  s: State
-  dispatch: Dispatch<Action>
-  workspaces: WorkspaceConfig[]
-  onSelectWorkspace: (id: string) => void
-}) {
+function Setup({ s, dispatch }: { s: State; dispatch: Dispatch<Action> }) {
   const [draft, setDraft] = useState<WorkspaceConfig>(structuredClone(s.workspace))
   const dirty = JSON.stringify(draft) !== JSON.stringify(s.workspace)
 
@@ -251,74 +255,36 @@ function Clients({
   }
 
   return (
-    <div className="stack" style={{ gap: 24 }}>
-      <div className="card roster admin-clients">
-        <div className="roster-head">
-          <span>Client</span>
-          <span>Sector</span>
-          <span>Size</span>
-          <span>Workshop</span>
-          <span />
+    <div className="card stack" style={{ gap: 18 }}>
+      <div className="section-title" style={{ marginBottom: 0 }}>
+        <div>
+          <h3>{draft.name}</h3>
+          <p className="small muted" style={{ marginTop: 4 }}>
+            One product shell. This changes what every role sees.
+          </p>
         </div>
-        {workspaces.map((workspace) => (
-          <button
-            key={workspace.id}
-            type="button"
-            className={`roster-row${workspace.id === s.workspace.id ? ' is-open' : ''}`}
-            onClick={() => onSelectWorkspace(workspace.id)}
-          >
-            <span className="roster-who">{workspace.name}</span>
-            <span>{workspace.sector}</span>
-            <span>
-              {workspace.roles.length} roles · {workspace.employeeCount} people
-            </span>
-            <span className="muted">{workspace.workshop}</span>
-            <span className="roster-end">
-              {workspace.id === s.workspace.id && (
-                <span className="badge ok">
-                  <span className="dot" />
-                  Open
-                </span>
-              )}
-              <span className="roster-go" aria-hidden>
-                →
-              </span>
-            </span>
-          </button>
-        ))}
+        <button className="btn btn-primary btn-sm" disabled={!dirty} onClick={() => dispatch({ type: 'updateWorkspace', workspace: draft })}>
+          Save
+        </button>
       </div>
-
-      <div className="card stack" style={{ gap: 18 }}>
-        <div className="section-title" style={{ marginBottom: 0 }}>
-          <div>
-            <div className="k">Setup</div>
-            <h3 style={{ marginTop: 4 }}>{draft.name}</h3>
-            <p className="small muted" style={{ marginTop: 4 }}>
-              One product shell. This changes what every role sees.
-            </p>
-          </div>
-          <button className="btn btn-primary btn-sm" disabled={!dirty} onClick={() => dispatch({ type: 'updateWorkspace', workspace: draft })}>
-            Save
-          </button>
+      <div className="form-grid setup-grid">
+        <div className="field">
+          <label>Client name</label>
+          <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
         </div>
-        <div className="form-grid">
-          <div className="field">
-            <label>Client name</label>
-            <input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
-          </div>
-          <div className="field">
-            <label>Sector</label>
-            <input value={draft.sector} onChange={(e) => setDraft({ ...draft, sector: e.target.value })} />
-          </div>
-          <div className="field">
-            <label>People</label>
-            <input type="number" value={draft.employeeCount} onChange={(e) => setDraft({ ...draft, employeeCount: Number(e.target.value) })} />
-          </div>
-          <div className="field">
-            <label>Workshop</label>
-            <input value={draft.workshop} onChange={(e) => setDraft({ ...draft, workshop: e.target.value })} />
-          </div>
+        <div className="field">
+          <label>Sector</label>
+          <input value={draft.sector} onChange={(e) => setDraft({ ...draft, sector: e.target.value })} />
         </div>
+        <div className="field">
+          <label>People</label>
+          <input type="number" value={draft.employeeCount} onChange={(e) => setDraft({ ...draft, employeeCount: Number(e.target.value) })} />
+        </div>
+        <div className="field">
+          <label>Workshop</label>
+          <input value={draft.workshop} onChange={(e) => setDraft({ ...draft, workshop: e.target.value })} />
+        </div>
+      </div>
 
         <div>
           <h4>Role paths</h4>
@@ -356,7 +322,6 @@ function Clients({
             </div>
           ))}
         </div>
-      </div>
     </div>
   )
 }

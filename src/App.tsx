@@ -99,7 +99,7 @@ export default function App() {
     [workspaceId],
   )
   const [ai, setAi] = useState<AiSettings>(loadAi)
-  const [view, setView] = useState<View>({ actor: 'andres', managerTab: 'mine', adminTab: 'clients' })
+  const [view, setView] = useState<View>({ actor: 'andres', managerTab: 'mine', adminTab: 'setup' })
   const [guide, setGuide] = useState(true)
   const [intro, setIntro] = useState(() => sessionStorage.getItem('aieesti-intro') !== '1')
   const [query, setQuery] = useState('')
@@ -250,7 +250,6 @@ export default function App() {
           workspaces={Object.values(portfolio).map((item) => item.workspace)}
           onSelectWorkspace={(id) => {
             setWorkspaceId(id)
-            setView({ actor: 'admin', managerTab: 'mine', adminTab: 'clients' })
           }}
           query={query}
         />
